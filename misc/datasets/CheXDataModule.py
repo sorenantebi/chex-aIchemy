@@ -14,12 +14,13 @@ Todo
 
 """
 class CheXpertDataset(Dataset):
-    def __init__(self, img_data_dir, csv_file_img, image_size, augmentation=False, pseudo_rgb = True, label_noise = False):
+    def __init__(self, img_data_dir, csv_file_img, image_size, model_name, augmentation=False, pseudo_rgb = True, label_noise = False):
         self.data = pd.read_csv(csv_file_img)
         self.image_size = image_size
         self.do_augment = augmentation
         self.pseudo_rgb = pseudo_rgb
         self.img_data_dir = img_data_dir
+        self.model_name = model_name
 
         self.labels = [
             'No Finding',
@@ -84,8 +85,9 @@ class CheXpertDataset(Dataset):
         label_sex = torch.from_numpy(sample['label_sex'])
         label_race = torch.from_numpy(sample['label_race'])
 
-        """ if self.pseudo_rgb:
-            image = image.repeat(3, 1, 1) """
+        if self.model_name == 'imagenet':
+            if self.pseudo_rgb:
+                image = image.repeat(3, 1, 1)
 
         if self.do_augment:
             image = self.augment(image)
@@ -95,7 +97,9 @@ class CheXpertDataset(Dataset):
     def get_sample(self, item):
         sample = self.samples[item]
         image = imread(sample['image_path']).astype(np.float32)
-        image = xrv.datasets.normalize(image, 255)
+
+        if self.model_name != 'imagenet':
+            image = xrv.datasets.normalize(image, 255)
         return {'image': image, 'label_disease': sample['label_disease'], 'label_sex': sample['label_sex'], 'label_race': sample['label_race']}
 
 """
@@ -103,7 +107,7 @@ class CheXpertDataset(Dataset):
 
 """
 class CheXpertDataModule(pl.LightningDataModule):
-    def __init__(self, img_data_dir, csv_train_img, csv_val_img, csv_test_img, image_size, pseudo_rgb, batch_size, num_workers):
+    def __init__(self, img_data_dir, csv_train_img, csv_val_img, csv_test_img, image_size, pseudo_rgb, batch_size, num_workers, model_name):
         super().__init__()
         self.img_data_dir = img_data_dir
         self.csv_train_img = csv_train_img
@@ -113,9 +117,9 @@ class CheXpertDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
-        self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
-        self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
 
         print('#train: ', len(self.train_set))
         print('#val:   ', len(self.val_set))
