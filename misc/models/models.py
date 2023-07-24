@@ -12,7 +12,7 @@ from torchvision import models
 
 """
 class DenseNetXRVAdversarial(pl.LightningModule):
-    def __init__(self, args: Hparams, confusion = None):
+    def __init__(self, args: Hparams):
         super().__init__()
         self.model_name = args.model_name
         self.num_classes_disease = args.num_classes_disease
@@ -21,7 +21,7 @@ class DenseNetXRVAdversarial(pl.LightningModule):
         self.alpha = args.alpha
         self.fading_in_steps = args.fading_in_steps
         self.fading_in_range = args.fading_in_range
-        self.confusion = confusion
+        self.confusion = args.confusion
         self.validation_step_outputs = []
 
         self.lr_d = args.lr_d
@@ -50,8 +50,8 @@ class DenseNetXRVAdversarial(pl.LightningModule):
         out_sex = self.fc_sex(embedding)
         out_race = self.fc_race(embedding)
         return out_disease, out_sex, out_race
-
-    def configure_optimizers(self):
+    
+    def initialize_parameters(self):
         params_backbone = list(self.backbone.parameters())
         params_disease = params_backbone + list(self.fc_disease.parameters())
         
@@ -60,8 +60,11 @@ class DenseNetXRVAdversarial(pl.LightningModule):
                                        params_backbone + list(self.fc_race.parameters()))
         else: 
             params_sex, params_race = list(self.fc_sex.parameters()), list(self.fc_race.parameters()) 
-            
-        
+
+        return params_disease, params_sex, params_race, params_backbone
+    
+    def configure_optimizers(self):
+        params_disease, params_sex, params_race, params_backbone = self.initialize_parameters()
         optim_backbone = torch.optim.Adam(params_backbone, lr=self.lr_b)
         optim_disease = torch.optim.Adam(params_disease, lr=self.lr_d)
         optim_sex = torch.optim.Adam(params_sex, lr=self.lr_s)
@@ -77,7 +80,7 @@ class DenseNetXRVAdversarial(pl.LightningModule):
         loss_disease = F.binary_cross_entropy(torch.sigmoid(out_disease), lab_disease)
         loss_sex = F.cross_entropy(out_sex, lab_sex)
         loss_race = F.cross_entropy(out_race, lab_race, weight=self.class_weights_race.type_as(img))
-
+        #calculate loss confusion
         if self.confusion == 'race-confusion':
             loss_confusion = -torch.mean(torch.log_softmax(out_race, dim=1))
         elif self.confusion == 'sex-confusion':
@@ -103,7 +106,7 @@ class DenseNetXRVAdversarial(pl.LightningModule):
         if optimizer_idx == 3:
             if self.confusion is None:
                 return None
-            if self.confusion == 'race-confusion' or self.confusion == 'sex-confusion':
+            if self.confusion in {'race-confusion', 'sex-confusion'}:
                 return omega * loss_confusion
             if self.confusion == 'race-negation':
                 return - omega * loss_race 
@@ -123,8 +126,8 @@ class DenseNetXRVAdversarial(pl.LightningModule):
     
     def on_validation_epoch_end(self):
         loss = torch.mean(torch.stack(self.validation_step_outputs))
-        session.report({"loss": loss})
-        self.log('val_loss_epoch_end', loss, on_epoch=True)
+        self.log('loss', loss, on_epoch=True)
+        self.validation_step_outputs.clear()
 
     def test_step(self, batch, batch_idx):
         loss_disease, loss_sex, loss_race, loss_confusion = self.process_batch(batch)
@@ -156,12 +159,10 @@ class DenseNetXRV(pl.LightningModule):
         return self.model.forward(x)
 
     def configure_optimizers(self):
-        params_to_update = []
-        for param in self.parameters():
-            if param.requires_grad == True:
-                params_to_update.append(param)
-        optimizer = torch.optim.Adam(params_to_update, lr=0.001)
-        return optimizer
+        params_to_update = [
+            param for param in self.parameters() if param.requires_grad == True
+        ]
+        return torch.optim.Adam(params_to_update, lr=0.001)
 
     def unpack_batch(self, batch):
         return batch['image'], batch['label']

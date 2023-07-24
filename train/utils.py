@@ -51,28 +51,19 @@ def test_multi(model, data_loader, device, num_classes_disease, num_classes_sex,
         preds_race = torch.cat(preds_race, dim=0)
         targets_race = torch.cat(targets_race, dim=0)
 
-        counts = []
-        for i in range(0,num_classes_disease):
-            t = targets_disease[:, i] == 1
-            c = torch.sum(t)
-            counts.append(c)
-        print(counts)
-
-        counts = []
-        for i in range(0,num_classes_sex):
-            t = targets_sex == i
-            c = torch.sum(t)
-            counts.append(c)
-        print(counts)
-
-        counts = []
-        for i in range(0,num_classes_race):
-            t = targets_race == i
-            c = torch.sum(t)
-            counts.append(c)
-        print(counts)
+        print_counts(num_classes_disease, targets_disease)
+        print_counts(num_classes_sex, targets_sex)
+        print_counts(num_classes_race, targets_race)
 
     return preds_disease.cpu().numpy(), targets_disease.cpu().numpy(), logits_disease.cpu().numpy(), preds_sex.cpu().numpy(), targets_sex.cpu().numpy(), logits_sex.cpu().numpy(), preds_race.cpu().numpy(), targets_race.cpu().numpy(), logits_race.cpu().numpy()
+
+def print_counts(num_classes, targets):
+    counts = []
+    for i in range(num_classes):
+        t = targets[:, i] == 1
+        c = torch.sum(t)
+        counts.append(c)
+    print(counts)
 
 """
 
@@ -101,21 +92,29 @@ def embeddings(model, data_loader, device):
 
     return embeds.cpu().numpy(), targets_disease.cpu().numpy(), targets_sex.cpu().numpy(), targets_race.cpu().numpy()
 
-def analysis (out_dir, num_classes_disease, num_classes_sex, num_classes_race, model, data, device):
+def analysis(out_dir, num_classes_disease, num_classes_sex, num_classes_race, model, data, device):
     
-    cols_names_classes_disease = ['class_' + str(i) for i in range(0,num_classes_disease)]
-    cols_names_logits_disease = ['logit_' + str(i) for i in range(0, num_classes_disease)]
-    cols_names_targets_disease = ['target_' + str(i) for i in range(0, num_classes_disease)]
+    cols_names_classes_disease = [
+        f'class_{str(i)}' for i in range(num_classes_disease)
+    ]
 
-    cols_names_classes_sex = ['class_' + str(i) for i in range(0,num_classes_sex)]
-    cols_names_logits_sex = ['logit_' + str(i) for i in range(0, num_classes_sex)]
+    cols_names_logits_disease = [
+        f'logit_{str(i)}' for i in range(num_classes_disease)
+    ]
+    
+    cols_names_targets_disease = [
+        f'target_{str(i)}' for i in range(num_classes_disease)
+    ]
 
-    cols_names_classes_race = ['class_' + str(i) for i in range(0,num_classes_race)]
-    cols_names_logits_race = ['logit_' + str(i) for i in range(0, num_classes_race)]
+    cols_names_classes_sex = [f'class_{str(i)}' for i in range(num_classes_sex)]
+    cols_names_logits_sex = [f'logit_{str(i)}' for i in range(num_classes_sex)]
+
+    cols_names_classes_race = [f'class_{str(i)}' for i in range(num_classes_race)]
+    cols_names_logits_race = [f'logit_{str(i)}' for i in range(num_classes_race)]
 
     print('VALIDATION')
     preds_val_disease, targets_val_disease, logits_val_disease, preds_val_sex, targets_val_sex, logits_val_sex, preds_val_race, targets_val_race, logits_val_race = test_multi(model, data.val_dataloader(), device)
-    
+
     df = pd.DataFrame(data=preds_val_disease, columns=cols_names_classes_disease)
     df_logits = pd.DataFrame(data=logits_val_disease, columns=cols_names_logits_disease)
     df_targets = pd.DataFrame(data=targets_val_disease, columns=cols_names_targets_disease)
@@ -136,7 +135,7 @@ def analysis (out_dir, num_classes_disease, num_classes_sex, num_classes_race, m
 
     print('TESTING')
     preds_test_disease, targets_test_disease, logits_test_disease, preds_test_sex, targets_test_sex, logits_test_sex, preds_test_race, targets_test_race, logits_test_race = test_multi(model, data.test_dataloader(), device)
-    
+
     df = pd.DataFrame(data=preds_test_disease, columns=cols_names_classes_disease)
     df_logits = pd.DataFrame(data=logits_test_disease, columns=cols_names_logits_disease)
     df_targets = pd.DataFrame(data=targets_test_disease, columns=cols_names_targets_disease)

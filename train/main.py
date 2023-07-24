@@ -2,34 +2,30 @@ import os
 import torch
 import sys
 sys.path.insert(1, '/rds/general/user/sea22/home/PROJECT/misc/')
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-import pandas as pd
+
+
 import numpy as np
-import torchvision
+
 import torchvision.transforms as T
-from torchvision import models
+
 import pytorch_lightning as pl
-import torchxrayvision as xrv
 
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-from skimage.io import imread
+
 from skimage.io import imsave
 from tqdm import tqdm
 from argparse import ArgumentParser
 from datasets.CheXDataModule import CheXpertDataModule
 from models.models import DenseNetXRVAdversarial
-from utils import test_multi, embeddings, analysis
+from utils import analysis
+
+
 import ray
 from ray import tune
 from ray.air import session
 from ray.air.checkpoint import Checkpoint
 from ray.tune.schedulers import ASHAScheduler
-
-
-
 
 
 def main(args):
@@ -38,7 +34,7 @@ def main(args):
     pl.seed_everything(42, workers=True)
     # pl.seed_everything(14, workers=True)
     #pl.seed_everything(96, workers=True)
-    
+
     # data
     data = CheXpertDataModule(img_data_dir= args.img_data_dir,
                               csv_train_img='/rds/general/user/sea22/ephemeral/datafiles/chexpert/CheXpert-v1.0/chexpert.sample.train.csv',
@@ -59,7 +55,7 @@ def main(args):
 
     # Create output directory
     out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}'
-    out_dir = 'adversarial/' + out_name
+    out_dir = f'results/{out_name}'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -67,15 +63,18 @@ def main(args):
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
 
-    for idx in range(0,5):
+    for idx in range(5):
         sample = data.train_set.get_sample(idx)
-        imsave(os.path.join(temp_dir, 'sample_' + str(idx) + '.jpg'), sample['image'].astype(np.uint8))
+        imsave(
+            os.path.join(temp_dir, f'sample_{str(idx)}.jpg'),
+            sample['image'].astype(np.uint8),
+        )
 
-    if args.confusion == None:
+    if args.confusion is None:
         checkpoint_callback = ModelCheckpoint(monitor="val_loss_disease", mode='min')
     else: 
         checkpoint_callback = ModelCheckpoint(monitor="val_loss_disease_mod", mode='min')
-    
+
     #todo hyperparam tuning
     # train
     trainer = pl.Trainer(
@@ -83,7 +82,7 @@ def main(args):
         log_every_n_steps = 5,
         max_epochs=args.epochs,
         gpus=args.gpus,
-        logger=TensorBoardLogger('adversarial/', name=out_name),
+        logger=TensorBoardLogger('results/', name=out_name),
     )
     trainer.logger._default_hp_metric = False
     trainer.fit(model, data)
@@ -91,8 +90,8 @@ def main(args):
     model = model_type.load_from_checkpoint(trainer.checkpoint_callback.best_model_path, args=args)
 
     use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:" + str(args.dev) if use_cuda else "cpu")
-    
+    device = torch.device(f"cuda:{str(args.dev)}" if use_cuda else "cpu")
+
     model.to(device)
     analysis(out_dir=out_dir,
              num_classes_disease=args.num_classes_disease, 

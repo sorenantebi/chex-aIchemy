@@ -48,7 +48,7 @@ class CheXpertDataset(Dataset):
         for idx, _ in enumerate(tqdm(range(len(self.data)), desc='Loading Data')):
             img_path = self.img_data_dir + self.data.loc[idx, 'path_preproc']
             img_label_disease = np.zeros(len(self.labels), dtype='float32')
-            for i in range(0, len(self.labels)):
+            for i in range(len(self.labels)):
                 img_label_disease[i] = np.array(self.data.loc[idx, self.labels[i].strip()] == 1, dtype='float32')
 
             img_label_sex = np.array(self.data.loc[idx, 'sex_label'], dtype='int64')
@@ -85,9 +85,8 @@ class CheXpertDataset(Dataset):
         label_sex = torch.from_numpy(sample['label_sex'])
         label_race = torch.from_numpy(sample['label_race'])
 
-        if self.model_name == 'imagenet':
-            if self.pseudo_rgb:
-                image = image.repeat(3, 1, 1)
+        if self.model_name == 'imagenet' and self.pseudo_rgb:
+            image = image.repeat(3, 1, 1)
 
         if self.do_augment:
             image = self.augment(image)
