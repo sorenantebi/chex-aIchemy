@@ -14,6 +14,7 @@ from torchvision import models
 class DenseNetXRVAdversarial(pl.LightningModule):
     def __init__(self, args: Hparams):
         super().__init__()
+        self.automatic_optimization = False
         self.model_name = args.model_name
         self.num_classes_disease = args.num_classes_disease
         self.num_classes_sex = args.num_classes_sex
@@ -73,51 +74,72 @@ class DenseNetXRVAdversarial(pl.LightningModule):
 
     def unpack_batch(self, batch):
         return batch['image'], batch['label_disease'], batch['label_sex'], batch['label_race']
-
-    def process_batch(self, batch):
+    
+    def process_batch(self, batch, type: str):
         img, lab_disease, lab_sex, lab_race = self.unpack_batch(batch)
         out_disease, out_sex, out_race = self.forward(img)
+        
         loss_disease = F.binary_cross_entropy(torch.sigmoid(out_disease), lab_disease)
-        loss_sex = F.cross_entropy(out_sex, lab_sex)
-        loss_race = F.cross_entropy(out_race, lab_race, weight=self.class_weights_race.type_as(img))
-        #calculate loss confusion
-        if self.confusion == 'race-confusion':
-            loss_confusion = -torch.mean(torch.log_softmax(out_race, dim=1))
-        elif self.confusion == 'sex-confusion':
-            loss_confusion = -torch.mean(torch.log_softmax(out_sex, dim=1))
-        else: 
-            loss_confusion = 0
+        loss_sex= F.cross_entropy(out_sex, lab_sex)
+        loss_race =F.cross_entropy(out_race, lab_race, weight=self.class_weights_race.type_as(img))
 
+        #calculate confusion loss
+        _dict = {
+            'race-confusion' : -torch.mean(torch.log_softmax(out_race, dim=1)),
+            'sex-confusion' : -torch.mean(torch.log_softmax(out_sex, dim=1))
+        }
+        loss_confusion = _dict.get(self.confusion, 0)
+        
+       
         return loss_disease, loss_sex, loss_race, loss_confusion
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def optimize(self, optimizer, batch, idx):
         omega = self.alpha / (1 + np.exp(-(self.global_step - self.fading_in_steps) / self.fading_in_range))
         loss_disease, loss_sex, loss_race, loss_confusion = self.process_batch(batch)
         self.log_dict({"train_loss_disease": loss_disease, "train_loss_sex": loss_sex, "train_loss_race": loss_race, "train_loss_confusion": loss_confusion, "omega": omega})
-        # grid = torchvision.utils.make_grid(batch['image'][0:4, ...], nrow=2, normalize=True)
-        # self.logger.experiment.add_image('images', grid, self.global_step)
         
-        if optimizer_idx == 0:
-            return loss_disease #+ omega * loss_confusion
-        if optimizer_idx == 1:
-            return loss_sex
-        if optimizer_idx == 2:
-            return loss_race
-        if optimizer_idx == 3:
+        _dict = {
+            0: lambda: self.opt_step(optimizer=optimizer, loss=loss_disease),
+            1: lambda: self.opt_step(optimizer=optimizer, loss=loss_sex),
+            2: lambda: self.opt_step(optimizer=optimizer, loss=loss_race),
+            3: {None: lambda: self.opt_step(optimizer=optimizer, loss=None),
+                'race-confusion': lambda: self.opt_step(optimizer=optimizer, loss= omega * loss_confusion), 
+                'sex-confusion': lambda: self.opt_step(optimizer=optimizer, loss= omega * loss_confusion),
+                'race-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_race),
+                 'sex-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_sex) }.get(self.confusion)
+        }
+        selected_function = _dict.get(idx)
+        selected_function()
+
+
+        """  if idx == 0:
+            self.opt_step(optimizer=optimizer, loss=loss_disease)
+        if idx == 1:
+            self.opt_step(optimizer=optimizer, loss=loss_sex)
+        if idx == 2:
+            self.opt_step(optimizer=optimizer, loss=loss_race)
+        if idx == 3:
             if self.confusion is None:
-                return None
-            if self.confusion in {'race-confusion', 'sex-confusion'}:
-                return omega * loss_confusion
-            if self.confusion == 'race-negation':
-                return - omega * loss_race 
-            if self.confusion == 'sex-negation':
-                return - omega * loss_sex 
-            
+                self.opt_step(optimizer=optimizer, loss=None)
+            elif self.confusion in {'race-confusion', 'sex-confusion'}:
+                self.opt_step(optimizer=optimizer, loss=omega * loss_confusion)
+            elif self.confusion == 'race-negation':
+                self.opt_step(optimizer=optimizer, loss= - omega * loss_race)
+            elif self.confusion == 'sex-negation':
+                self.opt_step(optimizer=optimizer, loss= - omega * loss_sex)
+            else:
+                raise ValueError("Invalid adversary") """
+   
+    def opt_step(self, optimizer, loss):
+        optimizer.zero_grad()
+        self.manual_backward(loss)
+        optimizer.step()
 
-                # V1: negate race classification lose
-            #return  # V1: negate sex classification lose
-            # return omega * loss_confusion # V2: confusion loss
-
+    def training_step(self, batch, batch_idx):
+        optimizer_list = [*self.optimizers()]
+        for idx, optimizer in enumerate(optimizer_list):
+            self.optimize(optimizer=optimizer, batch=batch, idx=idx)
+     
     def validation_step(self, batch, batch_idx):
         loss_disease, loss_sex, loss_race, loss_confusion = self.process_batch(batch)
         self.validation_step_outputs.append(loss_disease)
@@ -162,7 +184,8 @@ class DenseNetXRV(pl.LightningModule):
         params_to_update = [
             param for param in self.parameters() if param.requires_grad == True
         ]
-        return torch.optim.Adam(params_to_update, lr=0.001)
+        optimizer = torch.optim.Adam(params_to_update, lr=0.001)
+        return optimizer
 
     def unpack_batch(self, batch):
         return batch['image'], batch['label']
