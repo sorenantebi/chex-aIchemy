@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import torchxrayvision as xrv
 from skimage.io import imread
 from tqdm import tqdm
+from train.params import Hparams
 
 """ 
 Todo
@@ -19,7 +20,6 @@ class CheXpertDataset(Dataset):
         self.image_size = image_size
         self.do_augment = augmentation
         self.pseudo_rgb = pseudo_rgb
-        self.img_data_dir = img_data_dir
         self.model_name = model_name
 
         self.labels = [
@@ -46,7 +46,7 @@ class CheXpertDataset(Dataset):
 
         self.samples = []
         for idx, _ in enumerate(tqdm(range(len(self.data)), desc='Loading Data')):
-            img_path = self.img_data_dir + self.data.loc[idx, 'path_preproc']
+            img_path = img_data_dir + self.data.loc[idx, 'path_preproc']
             img_label_disease = np.zeros(len(self.labels), dtype='float32')
             for i in range(len(self.labels)):
                 img_label_disease[i] = np.array(self.data.loc[idx, self.labels[i].strip()] == 1, dtype='float32')
@@ -106,19 +106,19 @@ class CheXpertDataset(Dataset):
 
 """
 class CheXpertDataModule(pl.LightningDataModule):
-    def __init__(self, img_data_dir, csv_train_img, csv_val_img, csv_test_img, image_size, pseudo_rgb, batch_size, num_workers, model_name):
+    def __init__(self, args: Hparams, csv_train_img, csv_val_img, csv_test_img, pseudo_rgb):
         super().__init__()
-        self.img_data_dir = img_data_dir
+        self.img_data_dir = args.img_data_dir
         self.csv_train_img = csv_train_img
         self.csv_val_img = csv_val_img
         self.csv_test_img = csv_test_img
-        self.image_size = image_size
-        self.batch_size = batch_size
-        self.num_workers = num_workers
+        self.image_size = tuple(args.image_size)
+        self.batch_size = args.batch_size
+        self.num_workers = args.num_workers
 
-        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
-        self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
-        self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=self.model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=self.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=self.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
 
         print('#train: ', len(self.train_set))
         print('#val:   ', len(self.val_set))

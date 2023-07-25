@@ -1,4 +1,5 @@
 import argparse
+
 """
 CITE https://github.com/biomedia-mira/causal-gen/blob/main/src/main.py
 https://github.com/biomedia-mira/causal-gen/blob/main/src/hps.py
@@ -30,6 +31,8 @@ txrv.lr_r = 0.001
 txrv.lr_b = 0.001
 
 def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
+    model_names = ['all', 'chex', 'pc', 'mimic_ch', 'mimic_nb', 'rsna', 'nih','imagenet']
+    confusion_options = [None, 'race-confusion', 'sex-confusion', 'race-negation', 'sex-negation']
     hparams = Hparams()
     args = parser.parse_known_args()[0]
     valid_args = set(args.__dict__.keys())
@@ -42,6 +45,13 @@ def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
     
     for key, value in parser.parse_known_args()[0].__dict__.items():
         hparams.update_attributes(key, value)
+    
+    if getattr(hparams, 'model_name') not in model_names:
+        raise ValueError(f"{getattr(hparams, 'model_name')} not in model names")
+    if getattr(hparams, 'confusion') not in confusion_options:
+        raise ValueError(f"{getattr(hparams, 'confusion')} not in confusion options")
+    
+    print(hparams.__dict__.items())
     return hparams
 
 def add_arguments (parser: argparse.ArgumentParser):
@@ -55,14 +65,14 @@ def add_arguments (parser: argparse.ArgumentParser):
     parser.add_argument('--epochs', type=int)
     parser.add_argument('--alpha', type=int)
     parser.add_argument('--num_workers', type=int)
-    parser.add_argument('--fading_in_steps', type=int)
+    parser.add_argument('--fading_in_steps', type=int) #make the default 0 for this
     parser.add_argument('--fading_in_range', type=int)
-    parser.add_argument('--img_data_dir', type=int)
+    parser.add_argument('--img_data_dir', type=str)
     parser.add_argument('--lr_d', type=int)
     parser.add_argument('--lr_s', type=int)
     parser.add_argument('--lr_r', type=int)
     parser.add_argument('--lr_b', type=int)
     parser.add_argument('--gpus', default=1)
     parser.add_argument('--dev', default=0)
-    parser.add_argument('--confusion', required=True, type=str)
+    parser.add_argument('--confusion')
     return parser

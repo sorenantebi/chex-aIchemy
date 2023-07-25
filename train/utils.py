@@ -39,24 +39,20 @@ def test_multi(model, data_loader, device, num_classes_disease, num_classes_sex,
             preds_race.append(pred_race)
             targets_race.append(lab_race)
 
-        logits_disease = torch.cat(logits_disease, dim=0)
-        preds_disease = torch.cat(preds_disease, dim=0)
-        targets_disease = torch.cat(targets_disease, dim=0)
-
-        logits_sex = torch.cat(logits_sex, dim=0)
-        preds_sex = torch.cat(preds_sex, dim=0)
-        targets_sex = torch.cat(targets_sex, dim=0)
-
-        logits_race = torch.cat(logits_race, dim=0)
-        preds_race = torch.cat(preds_race, dim=0)
-        targets_race = torch.cat(targets_race, dim=0)
-
+        logits_disease, preds_disease, targets_disease = concatenate(logits=logits_disease, preds=preds_disease, targets=targets_disease)
+        logits_sex, preds_sex, targets_sex = concatenate(logits=logits_sex, preds=preds_sex, targets=targets_sex)
+        logits_race, preds_race, targets_race = concatenate(logits=logits_race, preds=preds_race, targets=targets_race)
+    
         print_counts(num_classes_disease, targets_disease)
         print_counts(num_classes_sex, targets_sex)
         print_counts(num_classes_race, targets_race)
 
     return preds_disease.cpu().numpy(), targets_disease.cpu().numpy(), logits_disease.cpu().numpy(), preds_sex.cpu().numpy(), targets_sex.cpu().numpy(), logits_sex.cpu().numpy(), preds_race.cpu().numpy(), targets_race.cpu().numpy(), logits_race.cpu().numpy()
 
+def concatenate(logits, preds, targets):
+    return torch.cat(logits, dim=0), torch.cat(preds, dim=0), torch.cat(targets, dim=0)
+
+     
 def print_counts(num_classes, targets):
     counts = []
     for i in range(num_classes):

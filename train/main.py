@@ -1,7 +1,7 @@
 import os
 import torch
 import sys
-sys.path.insert(1, '/rds/general/user/sea22/home/PROJECT/misc/')
+
 
 
 import numpy as np
@@ -16,8 +16,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from skimage.io import imsave
 from tqdm import tqdm
 from argparse import ArgumentParser
-from datasets.CheXDataModule import CheXpertDataModule
-from models.models import DenseNetXRVAdversarial
+from misc.datasets.CheXDataModule import CheXpertDataModule
+from misc.models.models import DenseNetMultitask
 from utils import analysis
 
 
@@ -36,21 +36,17 @@ def main(args):
     #pl.seed_everything(96, workers=True)
 
     # data
-    data = CheXpertDataModule(img_data_dir= args.img_data_dir,
+    data = CheXpertDataModule(args=args,
                               csv_train_img='/rds/general/user/sea22/ephemeral/datafiles/chexpert/CheXpert-v1.0/chexpert.sample.train.csv',
                               csv_val_img='/rds/general/user/sea22/ephemeral/datafiles/chexpert/CheXpert-v1.0/chexpert.sample.val.csv',
                               csv_test_img='/rds/general/user/sea22/ephemeral/datafiles/chexpert/CheXpert-v1.0/chexpert.resample.test.csv',
-                              image_size=tuple(args.image_size),
-                              pseudo_rgb=True,
-                              batch_size=args.batch_size,
-                              num_workers=args.num_workers,
-                              model_name=args.model_name)
+                              pseudo_rgb=True)
 
     # model
     """
     confusion = 'sex-negation', 'race-negation', 'sex-confusion', 'race-confusion', None
     """
-    model_type = DenseNetXRVAdversarial
+    model_type = DenseNetMultitask
     model = model_type(args=args)
 
     # Create output directory
@@ -70,10 +66,8 @@ def main(args):
             sample['image'].astype(np.uint8),
         )
 
-    if args.confusion is None:
-        checkpoint_callback = ModelCheckpoint(monitor="val_loss_disease", mode='min')
-    else: 
-        checkpoint_callback = ModelCheckpoint(monitor="val_loss_disease_mod", mode='min')
+    monitor = "val_loss_disease" if args.confusion is None else "val_loss_disease_mod"
+    checkpoint_callback = ModelCheckpoint(monitor=monitor, mode='min')
 
     #todo hyperparam tuning
     # train

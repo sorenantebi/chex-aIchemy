@@ -8,17 +8,26 @@ import torchvision
 from ray.air import session
 from train.params import Hparams
 from torchvision import models
+
+class MultitaskHead(nn.Module):
+    def __init__(self, num_features, num_classes_disease: int = 0, num_classes_sex: int = 0, num_classes_race: int = 0):
+        super().__init__()
+        self.fc_disease = nn.Linear(num_features, num_classes_disease)
+        self.fc_sex = nn.Linear(num_features, num_classes_sex)
+        self.fc_race = nn.Linear(num_features, num_classes_race)
+
+    def forward(self, embedding):
+        out_disease = self.fc_disease(embedding)
+        out_sex = self.fc_sex(embedding)
+        out_race = self.fc_race(embedding)
+        return out_disease, out_sex, out_race
 """
 
 """
-class DenseNetXRVAdversarial(pl.LightningModule):
+class DenseNetMultitask(pl.LightningModule):
     def __init__(self, args: Hparams):
         super().__init__()
         self.automatic_optimization = False
-        self.model_name = args.model_name
-        self.num_classes_disease = args.num_classes_disease
-        self.num_classes_sex = args.num_classes_sex
-        self.num_classes_race = args.num_classes_race
         self.alpha = args.alpha
         self.fading_in_steps = args.fading_in_steps
         self.fading_in_range = args.fading_in_range
@@ -32,35 +41,31 @@ class DenseNetXRVAdversarial(pl.LightningModule):
 
         self.class_weights_race = torch.FloatTensor(tuple(args.class_weights_race))
 
-        if self.model_name == 'imagenet':
+        if args.model_name == 'imagenet':
             self.backbone = models.densenet121(pretrained=True)
         else:
-            self.backbone = xrv.models.DenseNet(weights=f"densenet121-res224-{self.model_name}")
+            self.backbone = xrv.models.DenseNet(weights=f"densenet121-res224-{args.model_name}")
             self.backbone.op_threshs = None
 
         num_features = self.backbone.classifier.in_features
-        self.fc_disease = nn.Linear(num_features, self.num_classes_disease)
-        self.fc_sex = nn.Linear(num_features, self.num_classes_sex)
-        self.fc_race = nn.Linear(num_features, self.num_classes_race)
+        self.classification_head = MultitaskHead(num_features,args.num_classes_disease,args.num_classes_sex,args.num_classes_race)
         self.fc_connect = nn.Identity(num_features)
         self.backbone.classifier = self.fc_connect
 
     def forward(self, x):
         embedding = self.backbone.forward(x)
-        out_disease = self.fc_disease(embedding)
-        out_sex = self.fc_sex(embedding)
-        out_race = self.fc_race(embedding)
-        return out_disease, out_sex, out_race
+        return self.classification_head(embedding)
     
     def initialize_parameters(self):
         params_backbone = list(self.backbone.parameters())
-        params_disease = params_backbone + list(self.fc_disease.parameters())
+        params_disease = params_backbone + list(self.classification_head.fc_disease.parameters())
         
         if self.confusion is None:
-            params_sex, params_race = (params_backbone + list(self.fc_sex.parameters()), 
-                                       params_backbone + list(self.fc_race.parameters()))
+            params_sex = params_backbone + list(self.classification_head.fc_sex.parameters())
+            params_race = params_backbone + list(self.classification_head.fc_race.parameters())
         else: 
-            params_sex, params_race = list(self.fc_sex.parameters()), list(self.fc_race.parameters()) 
+            params_sex = list(self.classification_head.fc_sex.parameters())
+            params_race = list(self.classification_head.fc_race.parameters()) 
 
         return params_disease, params_sex, params_race, params_backbone
     
@@ -75,7 +80,7 @@ class DenseNetXRVAdversarial(pl.LightningModule):
     def unpack_batch(self, batch):
         return batch['image'], batch['label_disease'], batch['label_sex'], batch['label_race']
     
-    def process_batch(self, batch, type: str):
+    def process_batch(self, batch):
         img, lab_disease, lab_sex, lab_race = self.unpack_batch(batch)
         out_disease, out_sex, out_race = self.forward(img)
         
@@ -108,7 +113,7 @@ class DenseNetXRVAdversarial(pl.LightningModule):
                 'race-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_race),
                  'sex-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_sex) }.get(self.confusion)
         }
-        selected_function = _dict.get(idx)
+        selected_function = _dict.get(idx) # maybe add error message
         selected_function()
 
 
@@ -158,7 +163,7 @@ class DenseNetXRVAdversarial(pl.LightningModule):
 """
 
 """
-class DenseNetXRV(pl.LightningModule):
+class DenseNet(pl.LightningModule):
     def __init__(self, model_name, num_classes):
         super().__init__()
         self.model_name = model_name
