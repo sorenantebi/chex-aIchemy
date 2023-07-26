@@ -116,9 +116,9 @@ class CheXpertDataModule(pl.LightningDataModule):
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
 
-        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=self.model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
-        self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=self.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
-        self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=self.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=args.model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=args.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=args.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
 
         print('#train: ', len(self.train_set))
         print('#val:   ', len(self.val_set))
