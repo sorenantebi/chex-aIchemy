@@ -5,4 +5,4 @@
 
 cd $PBS_0_WORKDIR
 
-sh /rds/general/user/sea22/home/main/chex-aIchemy/train/run{$PBS_ARRAY_INDEX}.sh
+sh /rds/general/user/sea22/home/main/chex-aIchemy/train/run${PBS_ARRAY_INDEX}.sh

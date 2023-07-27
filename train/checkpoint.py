@@ -5,7 +5,7 @@ class CustomModelCheckPoint(ModelCheckpoint):
     def __init__(self, fading_in_steps, *args, **kwargs):
          super().__init__(*args, **kwargs)
          self.fading_in_steps = fading_in_steps
-
+        
     def save_checkpoint(self, trainer, pl_module):
             """
             Performs the main logic around saving a checkpoint.

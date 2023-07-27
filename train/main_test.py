@@ -50,7 +50,7 @@ def main(args):
     model = model_type(args=args)
 
     # Create output directory
-    out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}'
+    out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}-test'
     out_dir = f'results/{out_name}'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -66,7 +66,7 @@ def main(args):
             sample['image'].astype(np.uint8),
         )
 
-    monitor = "val_loss_disease" if args.confusion is None else "val_loss_disease_mod"
+    """  monitor = "val_loss_disease" if args.confusion is None else "val_loss_disease_mod"
     checkpoint_callback = ModelCheckpoint(monitor=monitor, mode='min')
 
     #todo hyperparam tuning
@@ -80,9 +80,9 @@ def main(args):
         logger=TensorBoardLogger('results/', name=out_name),
     )
     trainer.logger._default_hp_metric = False
-    trainer.fit(model, data)
+    trainer.fit(model, data) """
 
-    model = model_type.load_from_checkpoint(trainer.checkpoint_callback.best_model_path, args=args)
+    model = model_type.load_from_checkpoint('/homes/sea22/MSC_PROJECT/main/chex-aIchemy/train/results/densenet-imagenet-None-0.0001/version_0/checkpoints/epoch=9-step=15270.ckpt', args=args)
 
     use_cuda = torch.cuda.is_available()
     device = torch.device(f"cuda:{str(args.dev)}" if use_cuda else "cpu")

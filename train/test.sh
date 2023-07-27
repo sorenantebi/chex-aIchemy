@@ -8,9 +8,5 @@ nvidia-smi
 for value in {2..6} 
 do
     alpha=$(echo "scale=10; 10^-($value) " | bc)
-    python3 /homes/sea22/MSC_PROJECT/main/chex-aIchemy/train/main.py \
-        --model_name pc \
-        --epochs 40 \
-        --confusion race-negation \
-        --alpha $alpha 
+    echo  $alpha
 done

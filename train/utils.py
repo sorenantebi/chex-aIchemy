@@ -40,10 +40,19 @@ def test_multi(model, data_loader, device, num_classes_disease, num_classes_sex,
             targets_race.append(lab_race)
 
         logits_disease, preds_disease, targets_disease = concatenate(logits=logits_disease, preds=preds_disease, targets=targets_disease)
+        #print(f"Targets disease: {targets_disease} \n Num classes: {num_classes_disease}")
         logits_sex, preds_sex, targets_sex = concatenate(logits=logits_sex, preds=preds_sex, targets=targets_sex)
+        #print(f"Targets sex: {targets_sex} \n Num classes: {num_classes_sex}")
         logits_race, preds_race, targets_race = concatenate(logits=logits_race, preds=preds_race, targets=targets_race)
+        #print(f"Targets race: {targets_race} \n Num classes: {num_classes_race}")
     
-        print_counts(num_classes_disease, targets_disease)
+        counts = []
+        for i in range(0,num_classes_disease):
+            t = targets_disease[:, i] == 1
+            c = torch.sum(t)
+            counts.append(c)
+        print(counts)
+
         print_counts(num_classes_sex, targets_sex)
         print_counts(num_classes_race, targets_race)
 
@@ -56,7 +65,7 @@ def concatenate(logits, preds, targets):
 def print_counts(num_classes, targets):
     counts = []
     for i in range(num_classes):
-        t = targets[:, i] == 1
+        t = targets == i
         c = torch.sum(t)
         counts.append(c)
     print(counts)
@@ -109,7 +118,7 @@ def analysis(out_dir, num_classes_disease, num_classes_sex, num_classes_race, mo
     cols_names_logits_race = [f'logit_{str(i)}' for i in range(num_classes_race)]
 
     print('VALIDATION')
-    preds_val_disease, targets_val_disease, logits_val_disease, preds_val_sex, targets_val_sex, logits_val_sex, preds_val_race, targets_val_race, logits_val_race = test_multi(model, data.val_dataloader(), device)
+    preds_val_disease, targets_val_disease, logits_val_disease, preds_val_sex, targets_val_sex, logits_val_sex, preds_val_race, targets_val_race, logits_val_race = test_multi(model, data.val_dataloader(), device,  num_classes_disease, num_classes_sex, num_classes_race)
 
     df = pd.DataFrame(data=preds_val_disease, columns=cols_names_classes_disease)
     df_logits = pd.DataFrame(data=logits_val_disease, columns=cols_names_logits_disease)
@@ -130,7 +139,7 @@ def analysis(out_dir, num_classes_disease, num_classes_sex, num_classes_race, mo
     df.to_csv(os.path.join(out_dir, 'predictions_val_race.csv'), index=False)
 
     print('TESTING')
-    preds_test_disease, targets_test_disease, logits_test_disease, preds_test_sex, targets_test_sex, logits_test_sex, preds_test_race, targets_test_race, logits_test_race = test_multi(model, data.test_dataloader(), device)
+    preds_test_disease, targets_test_disease, logits_test_disease, preds_test_sex, targets_test_sex, logits_test_sex, preds_test_race, targets_test_race, logits_test_race = test_multi(model, data.test_dataloader(), device,  num_classes_disease, num_classes_sex, num_classes_race)
 
     df = pd.DataFrame(data=preds_test_disease, columns=cols_names_classes_disease)
     df_logits = pd.DataFrame(data=logits_test_disease, columns=cols_names_logits_disease)

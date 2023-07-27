@@ -103,11 +103,11 @@ class DenseNetMultitask(pl.LightningModule):
         loss_disease, loss_sex, loss_race, loss_confusion = self.process_batch(batch)
         self.log_dict({"train_loss_disease": loss_disease, "train_loss_sex": loss_sex, "train_loss_race": loss_race, "train_loss_confusion": loss_confusion, "omega": omega})
         
-        _dict = {
+        """   _dict = {
             0: lambda: self.opt_step(optimizer=optimizer, loss=loss_disease),
             1: lambda: self.opt_step(optimizer=optimizer, loss=loss_sex),
             2: lambda: self.opt_step(optimizer=optimizer, loss=loss_race),
-            3: {None: lambda: self.opt_step(optimizer=optimizer, loss=None),
+            3: {None: lambda: self.untoggle_optimizer(optimizer),
                 'race-confusion': lambda: self.opt_step(optimizer=optimizer, loss= omega * loss_confusion), 
                 'sex-confusion': lambda: self.opt_step(optimizer=optimizer, loss= omega * loss_confusion),
                 'race-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_race),
@@ -115,9 +115,9 @@ class DenseNetMultitask(pl.LightningModule):
         }
         selected_function = _dict.get(idx) # maybe add error message
         selected_function()
+        """
 
-
-        """  if idx == 0:
+        if idx == 0:
             self.opt_step(optimizer=optimizer, loss=loss_disease)
         if idx == 1:
             self.opt_step(optimizer=optimizer, loss=loss_sex)
@@ -125,7 +125,7 @@ class DenseNetMultitask(pl.LightningModule):
             self.opt_step(optimizer=optimizer, loss=loss_race)
         if idx == 3:
             if self.confusion is None:
-                self.opt_step(optimizer=optimizer, loss=None)
+                self.untoggle_optimizer(optimizer)
             elif self.confusion in {'race-confusion', 'sex-confusion'}:
                 self.opt_step(optimizer=optimizer, loss=omega * loss_confusion)
             elif self.confusion == 'race-negation':
@@ -133,7 +133,7 @@ class DenseNetMultitask(pl.LightningModule):
             elif self.confusion == 'sex-negation':
                 self.opt_step(optimizer=optimizer, loss= - omega * loss_sex)
             else:
-                raise ValueError("Invalid adversary") """
+                raise ValueError("Invalid adversary")
    
     def opt_step(self, optimizer, loss):
         optimizer.zero_grad()
