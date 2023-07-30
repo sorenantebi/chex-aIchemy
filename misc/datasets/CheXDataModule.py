@@ -55,21 +55,21 @@ class CheXpertDataset(Dataset):
             img_label_race = np.array(self.data.loc[idx, 'race_label'], dtype='int64')
 
             if label_noise:
-                noise_p = 0.04
+                noise_p = 0.5
                 add_noise = np.random.binomial(n=2, p=noise_p) == 1
 
                 # UNDERDIAGNOSIS
-                if img_label_sex == 1 and img_label_disease[0] == 0 and add_noise:
-                # if img_label_race == 2 and img_label_disease[0] == 0 and add_noise:
+                #if img_label_sex == 1 and img_label_disease[0] == 0 and add_noise:
+                """ if img_label_race == 2 and img_label_disease[0] == 0 and add_noise: # no finding
                     img_label_disease[0] = 1
-                    for i in range(1, len(self.labels)):
-                        img_label_disease[i] = 0
+                    for i in range(1, len(self.labels)):    # label flipping
+                        img_label_disease[i] = 0 """
 
                 # RANDOM NOISE
                 # if img_label_sex == 1 and add_noise:
-                # if img_label_race == 2 and add_noise:
-                #     for i in range(0, len(self.labels)):
-                #         img_label_disease[i] = np.array(np.random.choice(2), dtype='float32')
+                if img_label_race == 2 and add_noise:
+                     for i in range(0, len(self.labels)):    # random
+                        img_label_disease[i] = np.array(np.random.choice(2), dtype='float32')
 
             sample = {'image_path': img_path, 'label_disease': img_label_disease, 'label_sex': img_label_sex, 'label_race': img_label_race}
             self.samples.append(sample)
@@ -115,8 +115,9 @@ class CheXpertDataModule(pl.LightningDataModule):
         self.image_size = tuple(args.image_size)
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
-
-        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=args.model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=False)
+        self.label_noise = True if args.label_noise == 'True' else False
+        print (f"Label noise: {self.label_noise}")
+        self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=args.model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=self.label_noise)
         self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=args.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
         self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=args.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
 

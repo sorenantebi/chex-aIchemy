@@ -1,32 +1,17 @@
 import os
 import torch
-import sys
-
-
-
+from datetime import date
 import numpy as np
-
-import torchvision.transforms as T
-
 import pytorch_lightning as pl
-
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
-
 from skimage.io import imsave
 from tqdm import tqdm
 from argparse import ArgumentParser
 from misc.datasets.CheXDataModule import CheXpertDataModule
 from misc.models.models import DenseNetMultitask
 from utils import analysis
-
-
-import ray
-from ray import tune
-from ray.air import session
-from ray.air.checkpoint import Checkpoint
-from ray.tune.schedulers import ASHAScheduler
-
+from checkpoint import CustomModelCheckPoint
+import json
 
 def main(args):
 
@@ -50,8 +35,8 @@ def main(args):
     model = model_type(args=args)
 
     # Create output directory
-    out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}'
-    out_dir = f'results/{out_name}'
+    out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}-{args.label_noise}-{date.today()}'
+    out_dir = f'../../results/{out_name}'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -59,6 +44,12 @@ def main(args):
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
 
+    hparam_config = os.path.join(out_dir, 'hparam_config')
+    if not os.path.exists(hparam_config):
+        os.makedirs(hparam_config)
+    
+    with open(os.path.join(hparam_config, 'hparams.json'), "w") as json_file:
+        json_file.write(json.dumps(args.__dict__))
     for idx in range(5):
         sample = data.train_set.get_sample(idx)
         imsave(
@@ -67,7 +58,7 @@ def main(args):
         )
 
     monitor = "val_loss_disease" if args.confusion is None else "val_loss_disease_mod"
-    checkpoint_callback = ModelCheckpoint(monitor=monitor, mode='min')
+    checkpoint_callback = CustomModelCheckPoint(fading_in_steps=args.fading_in_steps, monitor=monitor, mode='min')
 
     #todo hyperparam tuning
     # train
@@ -77,7 +68,7 @@ def main(args):
         max_epochs=args.epochs,
         accelerator = "gpu",
         devices = args.gpus,
-        logger=TensorBoardLogger('results/', name=out_name),
+        logger=TensorBoardLogger('../../results/', name=out_name),
     )
     trainer.logger._default_hp_metric = False
     trainer.fit(model, data)
@@ -100,6 +91,7 @@ if __name__ == '__main__':
     from params import setup_hparams, add_arguments
     
     parser = ArgumentParser()
+    # parser.addargument
     parser = add_arguments(parser)
     args = setup_hparams(parser)
 

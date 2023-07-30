@@ -1,7 +1,0 @@
-#!/bin/bash
-#PBS -l select=1:ncpus=16:mem=96gb:ngpus=1:gpu_type=RTX6000:cpu_type=rome
-#PBS -l walltime=48:00:00
-
-cd $PBS_0_WORKDIR
-
-sh /rds/general/user/sea22/home/main/chex-aIchemy/train/run.sh

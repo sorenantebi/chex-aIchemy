@@ -33,7 +33,7 @@ class DenseNetMultitask(pl.LightningModule):
         self.fading_in_range = args.fading_in_range
         self.confusion = args.confusion
         self.validation_step_outputs = []
-
+        self.label_noise = True if args.label_noise == 'True' else False
         self.lr_d = args.lr_d
         self.lr_s = args.lr_s
         self.lr_r = args.lr_r
@@ -60,7 +60,7 @@ class DenseNetMultitask(pl.LightningModule):
         params_backbone = list(self.backbone.parameters())
         params_disease = params_backbone + list(self.classification_head.fc_disease.parameters())
         
-        if self.confusion is None:
+        if self.confusion is None and self.label_noise == False:
             params_sex = params_backbone + list(self.classification_head.fc_sex.parameters())
             params_race = params_backbone + list(self.classification_head.fc_race.parameters())
         else: 
