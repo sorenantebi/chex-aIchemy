@@ -34,6 +34,7 @@ class DenseNetMultitask(pl.LightningModule):
         self.confusion = args.confusion
         self.validation_step_outputs = []
         self.label_noise = True if args.label_noise == 'True' else False
+        self.multitask = True if args.multitask == 'True' else False
         self.lr_d = args.lr_d
         self.lr_s = args.lr_s
         self.lr_r = args.lr_r
@@ -59,8 +60,9 @@ class DenseNetMultitask(pl.LightningModule):
     def initialize_parameters(self):
         params_backbone = list(self.backbone.parameters())
         params_disease = params_backbone + list(self.classification_head.fc_disease.parameters())
-        
-        if self.confusion is None and self.label_noise == False:
+        #what if i want to see the baseline --> no confusion, no label noise but frozen bb
+        #are bb supposed to be frozen when we inject label noise?
+        if self.confusion is None and self.label_noise == False and self.multitask:
             params_sex = params_backbone + list(self.classification_head.fc_sex.parameters())
             params_race = params_backbone + list(self.classification_head.fc_race.parameters())
         else: 

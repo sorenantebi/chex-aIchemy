@@ -30,7 +30,7 @@ txrv.lr_s = 0.001
 txrv.lr_r = 0.001
 txrv.lr_b = 0.001
 txrv.label_noise = False # add type of noise and strength 
-
+txrv.multitask = False
 def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
     # if 
     model_names = ['all', 'chex', 'pc', 'mimic_ch', 'mimic_nb', 'rsna', 'nih','imagenet']
@@ -83,4 +83,5 @@ def add_arguments (parser: argparse.ArgumentParser):
     parser.add_argument('--dev', default=0)
     parser.add_argument('--confusion')
     parser.add_argument('--label_noise')
+    parser.add_argument('--multitask')
     return parser

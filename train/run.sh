@@ -8,9 +8,12 @@ nvidia-smi
 
 
 python3 /vol/bitbucket/sea22/MSC_PROJECT/main/chex-aIchemy/train/main.py \
-    --model_name pc \
+    --model_name imagenet \
     --epochs 40 \
     --label_noise True \
     --confusion race-negation \
+    --fading_in_steps 20000 \
+    --fading_in_range 800
+    
    
      
