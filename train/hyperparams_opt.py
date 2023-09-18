@@ -22,9 +22,9 @@ def objective(args, trial: optuna.trial.Trial) -> float:
 
     model = DenseNetMultitask(args=args)
     datamodule = CheXpertDataModule(args=args,
-                              csv_train_img='/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/CheXpert-v1.0/c.train.csv',
-                              csv_val_img='/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/CheXpert-v1.0/c.val.csv',
-                              csv_test_img='/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/CheXpert-v1.0/c.test.csv',
+                              csv_train_img='/<path-to-train.csv>',
+                              csv_val_img='/<path-to-val.csv>',
+                              csv_test_img='/<path-to-test.csv>',
                               pseudo_rgb=True
                               )
 
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     parser = add_arguments(parser)
     args = setup_hparams(parser)
 
-    pruner =  optuna.pruners.MedianPruner() #optuna.pruners.NopPruner()
-    """ optuna.pruners.MedianPruner() if args.pruning else """
+    pruner =  optuna.pruners.MedianPruner() 
+   
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
-    study_name = "example-study"  # Unique identifier of the study.
+    study_name = "example-study"  
     storage_name = "sqlite:///{}.db".format(study_name)
 
     study = optuna.create_study(direction="minimize", pruner=pruner, study_name=study_name, storage=storage_name)

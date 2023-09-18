@@ -5,25 +5,11 @@ import numpy as np
 import pytorch_lightning as pl
 import torchxrayvision as xrv
 import torchvision
-from ray.air import session
 from train.params import Hparams
 from torchvision import models
 
-class MultitaskHead(nn.Module):
-    def __init__(self, num_features, num_classes_disease: int = 0, num_classes_sex: int = 0, num_classes_race: int = 0):
-        super().__init__()
-        self.fc_disease = nn.Linear(num_features, num_classes_disease)
-        self.fc_sex = nn.Linear(num_features, num_classes_sex)
-        self.fc_race = nn.Linear(num_features, num_classes_race)
 
-    def forward(self, embedding):
-        out_disease = self.fc_disease(embedding)
-        out_sex = self.fc_sex(embedding)
-        out_race = self.fc_race(embedding)
-        return out_disease, out_sex, out_race
-"""
 
-"""
 class DenseNetMultitask(pl.LightningModule):
     def __init__(self, args: Hparams):
         super().__init__()
@@ -60,8 +46,7 @@ class DenseNetMultitask(pl.LightningModule):
     def initialize_parameters(self):
         params_backbone = list(self.backbone.parameters())
         params_disease = params_backbone + list(self.classification_head.fc_disease.parameters())
-        #what if i want to see the baseline --> no confusion, no label noise but frozen bb
-        #are bb supposed to be frozen when we inject label noise?
+        
         if self.confusion is None and self.label_noise == False and self.multitask:
             params_sex = params_backbone + list(self.classification_head.fc_sex.parameters())
             params_race = params_backbone + list(self.classification_head.fc_race.parameters())
@@ -90,7 +75,6 @@ class DenseNetMultitask(pl.LightningModule):
         loss_sex= F.cross_entropy(out_sex, lab_sex)
         loss_race =F.cross_entropy(out_race, lab_race, weight=self.class_weights_race.type_as(img))
 
-        #calculate confusion loss
         _dict = {
             'race-confusion' : -torch.mean(torch.log_softmax(out_race, dim=1)),
             'sex-confusion' : -torch.mean(torch.log_softmax(out_sex, dim=1))
@@ -105,20 +89,6 @@ class DenseNetMultitask(pl.LightningModule):
         loss_disease, loss_sex, loss_race, loss_confusion = self.process_batch(batch)
         self.log_dict({"train_loss_disease": loss_disease, "train_loss_sex": loss_sex, "train_loss_race": loss_race, "train_loss_confusion": loss_confusion, "omega": omega})
         
-        """   _dict = {
-            0: lambda: self.opt_step(optimizer=optimizer, loss=loss_disease),
-            1: lambda: self.opt_step(optimizer=optimizer, loss=loss_sex),
-            2: lambda: self.opt_step(optimizer=optimizer, loss=loss_race),
-            3: {None: lambda: self.untoggle_optimizer(optimizer),
-                'race-confusion': lambda: self.opt_step(optimizer=optimizer, loss= omega * loss_confusion), 
-                'sex-confusion': lambda: self.opt_step(optimizer=optimizer, loss= omega * loss_confusion),
-                'race-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_race),
-                 'sex-negation': lambda: self.opt_step(optimizer=optimizer, loss= - omega * loss_sex) }.get(self.confusion)
-        }
-        selected_function = _dict.get(idx) # maybe add error message
-        selected_function()
-        """
-
         if idx == 0:
             self.opt_step(optimizer=optimizer, loss=loss_disease)
         if idx == 1:
@@ -162,9 +132,19 @@ class DenseNetMultitask(pl.LightningModule):
         loss_disease, loss_sex, loss_race, loss_confusion = self.process_batch(batch)
         self.log_dict({"test_loss_disease": loss_disease, "test_loss_sex": loss_sex, "test_loss_race": loss_race, "test_loss_confusion": loss_confusion})
 
-"""
+class MultitaskHead(nn.Module):
+    def __init__(self, num_features, num_classes_disease: int = 0, num_classes_sex: int = 0, num_classes_race: int = 0):
+        super().__init__()
+        self.fc_disease = nn.Linear(num_features, num_classes_disease)
+        self.fc_sex = nn.Linear(num_features, num_classes_sex)
+        self.fc_race = nn.Linear(num_features, num_classes_race)
 
-"""
+    def forward(self, embedding):
+        out_disease = self.fc_disease(embedding)
+        out_sex = self.fc_sex(embedding)
+        out_race = self.fc_race(embedding)
+        return out_disease, out_sex, out_race
+
 class DenseNet(pl.LightningModule):
     def __init__(self, model_name, num_classes):
         super().__init__()
@@ -176,7 +156,7 @@ class DenseNet(pl.LightningModule):
             self.model = xrv.models.DenseNet(weights=f"densenet121-res224-{self.model_name}")
             self.model.op_threshs = None
         num_features = self.model.classifier.in_features
-        #TOD freeze(self.model)
+        # freeze(self.model)
         self.model.classifier = nn.Linear(num_features, self.num_classes)
 
     def remove_head(self):

@@ -17,21 +17,20 @@ def main(args):
 
     # sets seeds for numpy, torch, python.random and PYTHONHASHSEED.
     pl.seed_everything(42, workers=True)
-    # pl.seed_everything(14, workers=True)
-    #pl.seed_everything(96, workers=True)
+    
 
     # data
     data = CheXpertDataModule(args=args,
-                              csv_train_img='/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/CheXpert-v1.0/chexpert.sample.train.csv',
-                              csv_val_img='/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/CheXpert-v1.0/chexpert.sample.val.csv',
-                              csv_test_img='/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/CheXpert-v1.0/chexpert.resample.test.csv',
+                              csv_train_img='/<path-to-train.csv>',
+                              csv_val_img='/<path-to-val.csv>',
+                              csv_test_img='/<path-to-test.csv>',
                               pseudo_rgb=True)
 
     # model
     """
-    confusion = 'sex-negation', 'race-negation', 'sex-confusion', 'race-confusion', None
+    Confusion type --> confusion = 'sex-negation' / 'race-negation' / 'sex-confusion' / 'race-confusion' / None
     """
-    model_type = DenseNetMultitask
+    model_type = DenseNetMultitask # or DenseNet
     model = model_type(args=args)
 
     # Create output directory
@@ -60,7 +59,7 @@ def main(args):
     monitor = "val_loss_disease" if args.confusion is None else "val_loss_disease_mod"
     checkpoint_callback = CustomModelCheckPoint(fading_in_steps=args.fading_in_steps, monitor=monitor, mode='min')
 
-    #todo hyperparam tuning
+    
     # train
     trainer = pl.Trainer(
         callbacks=[checkpoint_callback],
@@ -79,6 +78,8 @@ def main(args):
     device = torch.device(f"cuda:{str(args.dev)}" if use_cuda else "cpu")
 
     model.to(device)
+
+    # configure according to single vs multitask learning
     analysis(out_dir=out_dir,
              num_classes_disease=args.num_classes_disease, 
              num_classes_sex=args.num_classes_sex, 
@@ -91,7 +92,6 @@ if __name__ == '__main__':
     from params import setup_hparams, add_arguments
     
     parser = ArgumentParser()
-    # parser.addargument
     parser = add_arguments(parser)
     args = setup_hparams(parser)
 

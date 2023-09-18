@@ -1,10 +1,9 @@
 import argparse
 
 """
-CITE https://github.com/biomedia-mira/causal-gen/blob/main/src/main.py
+Code based on 
+https://github.com/biomedia-mira/causal-gen/blob/main/src/main.py
 https://github.com/biomedia-mira/causal-gen/blob/main/src/hps.py
-
-
 """
 class Hparams:
     def update_attributes(self, attr_name, value):
@@ -12,7 +11,7 @@ class Hparams:
 
 txrv = Hparams()
 txrv.confusion = None
-txrv.model_name = 'imagenet'     # model name
+txrv.model_name = 'imagenet'     
 txrv.image_size = (224, 224)
 txrv.num_classes_disease = 14
 txrv.num_classes_sex = 2
@@ -24,13 +23,15 @@ txrv.alpha = 0.0001
 txrv.num_workers = 4
 txrv.fading_in_steps = 0
 txrv.fading_in_range = 1
-txrv.img_data_dir = '/vol/biomedic3/bglocker/msc2023/sea22/datafiles/chexpert/'
+txrv.img_data_dir = '<path-to-data>'
 txrv.lr_d = 0.001
 txrv.lr_s = 0.001
 txrv.lr_r = 0.001
 txrv.lr_b = 0.001
-txrv.label_noise = False # add type of noise and strength 
+txrv.label_noise = False # To customize noise type, edit in CheXDataModule
 txrv.multitask = False
+
+
 def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
     # if 
     model_names = ['all', 'chex', 'pc', 'mimic_ch', 'mimic_nb', 'rsna', 'nih','imagenet']
@@ -38,6 +39,7 @@ def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
     hparams = Hparams()
     args = parser.parse_known_args()[0]
     valid_args = set(args.__dict__.keys())
+
     if args.confusion is not None:
         txrv.update_attributes('fading_in_steps', 20000)
         txrv.update_attributes('fading_in_range', 800)
@@ -48,10 +50,9 @@ def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
         if k not in valid_args:
             raise ValueError(f"{k} not in default args")
     parser.set_defaults(**hparams_dict)
-    #if json file 
+ 
     for key, value in parser.parse_known_args()[0].__dict__.items():
-  
-        hparams.update_attributes(key, value) #ch
+        hparams.update_attributes(key, value) 
     
     if getattr(hparams, 'model_name') not in model_names:
         raise ValueError(f"{getattr(hparams, 'model_name')} not in model names")
@@ -72,7 +73,7 @@ def add_arguments (parser: argparse.ArgumentParser):
     parser.add_argument('--epochs', type=int)
     parser.add_argument('--alpha', type=float)
     parser.add_argument('--num_workers', type=int)
-    parser.add_argument('--fading_in_steps', type=int) #make the default 0 for this
+    parser.add_argument('--fading_in_steps', type=int) 
     parser.add_argument('--fading_in_range', type=int)
     parser.add_argument('--img_data_dir', type=str)
     parser.add_argument('--lr_d', type=float)

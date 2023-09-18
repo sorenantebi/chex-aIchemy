@@ -1,7 +1,9 @@
 from pytorch_lightning.callbacks import ModelCheckpoint
 import pytorch_lightning as pl
 
-
+"""
+Only save checkpoints if global_step > fading_in_steps 
+"""
 class CustomModelCheckPoint(ModelCheckpoint):
     def __init__(self, fading_in_steps, *args, **kwargs):
          super().__init__(*args, **kwargs)

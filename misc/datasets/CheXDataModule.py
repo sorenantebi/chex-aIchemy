@@ -10,10 +10,7 @@ from skimage.io import imread
 from tqdm import tqdm
 from train.params import Hparams
 
-""" 
-Todo
 
-"""
 class CheXpertDataset(Dataset):
     def __init__(self, img_data_dir, csv_file_img, image_size, model_name, augmentation=False, pseudo_rgb = True, label_noise = False):
         self.data = pd.read_csv(csv_file_img)
@@ -101,10 +98,7 @@ class CheXpertDataset(Dataset):
             image = xrv.datasets.normalize(image, 255)
         return {'image': image, 'label_disease': sample['label_disease'], 'label_sex': sample['label_sex'], 'label_race': sample['label_race']}
 
-"""
-/Todo 
 
-"""
 class CheXpertDataModule(pl.LightningDataModule):
     def __init__(self, args: Hparams, csv_train_img, csv_val_img, csv_test_img, pseudo_rgb):
         super().__init__()
@@ -117,6 +111,7 @@ class CheXpertDataModule(pl.LightningDataModule):
         self.num_workers = args.num_workers
         self.label_noise = True if args.label_noise == 'True' else False
         print (f"Label noise: {self.label_noise}")
+
         self.train_set = CheXpertDataset(self.img_data_dir, self.csv_train_img, self.image_size, model_name=args.model_name, augmentation=True, pseudo_rgb=pseudo_rgb, label_noise=self.label_noise)
         self.val_set = CheXpertDataset(self.img_data_dir, self.csv_val_img, self.image_size, model_name=args.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
         self.test_set = CheXpertDataset(self.img_data_dir, self.csv_test_img, self.image_size, model_name=args.model_name, augmentation=False, pseudo_rgb=pseudo_rgb, label_noise=False)
