@@ -9,7 +9,6 @@ from train.params import Hparams
 from torchvision import models
 
 
-
 class DenseNetMultitask(pl.LightningModule):
     def __init__(self, args: Hparams):
         super().__init__()
@@ -150,11 +149,13 @@ class DenseNet(pl.LightningModule):
         super().__init__()
         self.model_name = model_name
         self.num_classes = num_classes
+        
         if self.model_name == 'imagenet':
             self.backbone = models.densenet121(pretrained=True)
         else:
             self.model = xrv.models.DenseNet(weights=f"densenet121-res224-{self.model_name}")
             self.model.op_threshs = None
+
         num_features = self.model.classifier.in_features
         # freeze(self.model)
         self.model.classifier = nn.Linear(num_features, self.num_classes)

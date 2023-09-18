@@ -5,6 +5,7 @@ Code based on
 https://github.com/biomedia-mira/causal-gen/blob/main/src/main.py
 https://github.com/biomedia-mira/causal-gen/blob/main/src/hps.py
 """
+
 class Hparams:
     def update_attributes(self, attr_name, value):
         setattr(self, attr_name, value)
@@ -33,7 +34,6 @@ txrv.multitask = False
 
 
 def setup_hparams(parser: argparse.ArgumentParser) -> Hparams:
-    # if 
     model_names = ['all', 'chex', 'pc', 'mimic_ch', 'mimic_nb', 'rsna', 'nih','imagenet']
     confusion_options = [None, 'race-confusion', 'sex-confusion', 'race-negation', 'sex-negation']
     hparams = Hparams()

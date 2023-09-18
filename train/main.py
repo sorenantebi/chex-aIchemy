@@ -1,11 +1,9 @@
 import os
 import torch
-from datetime import date
 import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from skimage.io import imsave
-from tqdm import tqdm
 from argparse import ArgumentParser
 from misc.datasets.CheXDataModule import CheXpertDataModule
 from misc.models.models import DenseNetMultitask
@@ -34,7 +32,7 @@ def main(args):
     model = model_type(args=args)
 
     # Create output directory
-    out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}-{args.label_noise}-{date.today()}'
+    out_name = f'densenet-{args.model_name}-{args.confusion}-{args.alpha}-{args.label_noise}' # edit as needed
     out_dir = f'../../results/{out_name}'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
